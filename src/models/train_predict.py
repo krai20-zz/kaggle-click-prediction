@@ -27,8 +27,11 @@ def train_classifier(clf, X, y):
     scores = cross_val_score(clf, X, y, f1_scorer, cv = 4)
     end = time()
 
-    # Print the results
+    # log and print the results
+    log.info('cross_val_scores: {}'.format(scores))
     print 'cross_val_score', scores
+
+    log.info("Trained model in {:.4f} seconds".format(end - start))
     print "Trained model in {:.4f} seconds".format(end - start)
 
 
@@ -39,17 +42,23 @@ def predict_labels(clf, features):
 
     # Start the clock, make predictions, then stop the clock
     start = time()
-    y_pred = clf.predict(features)
+    pred = clf.predict(features)
+    pred_probs = clf.predict_proba(features)
     end = time()
 
     # Print and return results
+    log.info("Made predictions in {:.4f} seconds.".format(end - start))
     print "Made predictions in {:.4f} seconds.".format(end - start)
-    return y_pred
+    return pred, pred_probs
 
 
-def write_labels(test, predictions, write_file):
+def write_labels(test, pred, pred_probs, write_file):
+    """
+        combines test data and predictions and writes the labels
+    """
     pred_df = pd.DataFrame(predictions)
-    labels = test['ad_id'].merge(pred_df)
+    pred_probs_df = pd.DataFrame(pred_probs)
+    labels = pd.concat([test, pred_df, pred_probs_df], axis=1)
     labels.to_csv(write_file)
 
 
@@ -64,7 +73,7 @@ if __name__ == "__main__":
 
     # predict labels for kaggle's test data
     kaggle_test_file = ''
-    write_file = ''
-    test = read_data(test_file)
-    predictions = predict_labels(clf, test)
-    write_labels(test, predictions)
+    write_file = 'labeled_test_data.csv'
+    kaggle_test_data = read_data(test_file)
+    predictions = predict_labels(clf, kaggle_test_data)
+    write_labels(kaggle_test_data, predictions, write_file)
